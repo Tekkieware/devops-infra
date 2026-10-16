@@ -1,0 +1,82 @@
+# Trimmed Argo CD for a single small node: no SSO (Dex), notifications or ApplicationSets.
+configs:
+  params:
+    # TLS ends at the ALB (plain HTTP without a domain); Argo CD serves under /argocd.
+    server.insecure: true
+    server.rootpath: /argocd
+  repositories:
+    devops-helm:
+      type: git
+      name: devops-helm
+      url: ${helm_repo_url}
+      # username/password are injected with set_sensitive
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
+
+applicationSet:
+  replicas: 0
+
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+repoServer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 384Mi
+
+server:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+redis:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+# Own Ingress (no host rule) so it works on the ALB's DNS name without a domain.
+# Shares one ALB with the vprofile app through the IngressGroup.
+extraObjects:
+  - apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: argocd-server-alb
+      annotations:
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/group.name: ${alb_group_name}
+        alb.ingress.kubernetes.io/group.order: "10"
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+        alb.ingress.kubernetes.io/inbound-cidrs: ${allowed_cidrs_csv}
+        alb.ingress.kubernetes.io/healthcheck-path: /argocd/
+        alb.ingress.kubernetes.io/success-codes: 200-399
+    spec:
+      ingressClassName: alb
+      rules:
+        - http:
+            paths:
+              - path: /argocd
+                pathType: Prefix
+                backend:
+                  service:
+                    name: argocd-server
+                    port:
+                      name: http

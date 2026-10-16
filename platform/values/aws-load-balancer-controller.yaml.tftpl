@@ -1,0 +1,17 @@
+clusterName: ${cluster_name}
+# Set explicitly: pods cannot reach the instance metadata service to discover these.
+region: ${region}
+vpcId: ${vpc_id}
+
+replicaCount: 1
+
+serviceAccount:
+  create: true
+  name: ${sa_name}
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    memory: 256Mi

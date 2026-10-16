@@ -1,0 +1,32 @@
+applications:
+  vprofile:
+    namespace: ${namespace}
+    # Deleting the Application also deletes the app's resources (incl. its ALB rules).
+    finalizers:
+      - resources-finalizer.argocd.argoproj.io
+    project: default
+    source:
+      repoURL: ${helm_repo_url}
+      targetRevision: main
+      path: charts/vprofile
+      helm:
+        releaseName: vprofile
+        # Kept here so the app and Argo CD Ingresses share identical ALB settings.
+        valuesObject:
+          ingress:
+            inboundCidrs: ${jsonencode(allowed_cidrs)}
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: vprofile
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+      retry:
+        limit: 5
+        backoff:
+          duration: 10s
+          factor: 2
+          maxDuration: 3m
